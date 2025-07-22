@@ -43,7 +43,7 @@ npm install @arcgis/map-components
 
 The main application
 
-![Main Application](./screenshot.png)
+<img width="959" height="479" alt="image" src="https://github.com/user-attachments/assets/a55e6e70-0e1b-4949-a593-b8b28f8d0b13" />
 
 ## Project Structure
 
