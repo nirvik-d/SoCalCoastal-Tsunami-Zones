@@ -1,4 +1,4 @@
-# SoCal Coastal Tsunami Zones
+# SoCal Coastal Tsunami Zones in 3D
 
 A web application that displays tsunami hazard zones for coastal Southern California cities using ArcGIS Maps SDK for JavaScript and Calcite UI components.
 
