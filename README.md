@@ -17,8 +17,6 @@ A web application that displays tsunami hazard zones for coastal Southern Califo
 ## Prerequisites
 
 - Node.js (v16 or higher)
-- npm (v8 or higher)
-- ArcGIS API Key with access to the ArcGIS Maps SDK for JavaScript
 
 ## Setup
 
