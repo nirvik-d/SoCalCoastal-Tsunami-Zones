@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SoCal Coastal Tsunami Zones</title>
+  </head>
+  <body>
+    <arcgis-scene
+      basemap="topo-3d"
+      center="-117.9988, 33.6595"
+      zoom="8"
+      ground="world-elevation"
+    >
+      <arcgis-zoom position="top-left"></arcgis-zoom>
+
+      <arcgis-expand position="top-left">
+        <arcgis-basemap-gallery></arcgis-basemap-gallery>
+      </arcgis-expand>
+
+      <arcgis-placement position="top-right">
+        <calcite-select id="zoneSelector">
+          <calcite-option value="evacuate">Hazard Zones</calcite-option>
+          <calcite-option value="safe">Safe Zones</calcite-option>
+        </calcite-select>
+      </arcgis-placement>
+    </arcgis-scene>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
