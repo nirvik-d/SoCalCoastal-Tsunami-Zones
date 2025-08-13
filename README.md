@@ -88,54 +88,57 @@ The HTML file sets up the basic structure for the ArcGIS web application:
 The CSS file styles the ArcGIS web application:
 
 ```css
-/* style.css */
+@import "https://js.arcgis.com/calcite-components/3.2.1/calcite.css";
+@import "https://js.arcgis.com/4.33/@arcgis/core/assets/esri/themes/light/main.css";
+@import "https://js.arcgis.com/4.33/map-components/main.css";
+
 html,
 body {
-  width: 100%;
-  height: 100%;
+  height: 100vh;
+  width: 100vw;
   margin: 0;
   padding: 0;
 }
 
-/* ArcGIS Map Components */
-arcgis-scene {
-  width: 100%;
-  height: 100%;
-}
-
-/* Calcite Components */
-calcite-select {
-  width: 200px;
+#zoneSelector {
+  border-radius: 5px;
 }
 ```
 
 ### Main TypeScript File (main.ts)
 
-1. Import the necessary ArcGIS and Calcite components.
+1. **Import the required modules.**
 
 ```typescript
+import "./style.css";
+
 import "@arcgis/map-components/components/arcgis-scene";
 import "@arcgis/map-components/components/arcgis-zoom";
 import "@arcgis/map-components/components/arcgis-expand";
 import "@arcgis/map-components/components/arcgis-basemap-gallery";
 import "@arcgis/map-components/components/arcgis-placement";
+
 import "@esri/calcite-components/components/calcite-select";
 import "@esri/calcite-components/components/calcite-option";
+import "@esri/calcite-components/components/calcite-switch";
+import "@esri/calcite-components/components/calcite-label";
+import "@esri/calcite-components/components/calcite-select";
+
+import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
+import Graphic from "@arcgis/core/Graphic";
+import { SimpleFillSymbol } from "@arcgis/core/symbols";
+import type SceneView from "@arcgis/core/views/SceneView";
 ```
 
-2. Initialize ArcGIS map components
+2. **Create feature layer for tsunami hazard zones**
 
 ```typescript
-const scene = document.querySelector("arcgis-scene");
-```
-
-3. Create feature layer for tsunami hazard zones.
-
-```typescript
-const tsunamiHazardLayer = new FeatureLayer({
+const tsunamiHazardLayer: FeatureLayer | null = new FeatureLayer({
   url: "https://services2.arcgis.com/zr3KAIbsRSUyARHG/ArcGIS/rest/services/CA_Tsunami_Hazard_Area/FeatureServer",
   outFields: ["*"],
-  definitionExpression: "County in ('Santa Barbara', 'Ventura', 'Los Angeles', 'Orange', 'San Diego', 'San Luis Obispo', 'Imperial')",
+  definitionExpression:
+    "County in ('Santa Barbara', 'Ventura', 'Los Angeles', 'Orange', 'San Diego', 'San Luis Obispo', 'Imperial')",
   elevationInfo: {
     mode: "relative-to-ground",
     offset: 10,
@@ -143,118 +146,152 @@ const tsunamiHazardLayer = new FeatureLayer({
 });
 ```
 
-4. Create graphics layers for hazard and safe zones.
+3. **Get the scene element, wait for it to be ready, query the features and create graphics layers**
 
 ```typescript
-const hazardGraphicsLayer = new GraphicsLayer({
-  title: "Hazard Zones",
-  id: "hazard-zones"
+const scene: HTMLArcgisSceneElement | null = document.querySelector("arcgis-scene");
+if (!scene) {
+  throw new Error("Scene element not found");
+}
+
+await scene.viewOnReady();
+
+const view: SceneView | null = scene?.view;
+
+// Query the tsunami hazard layer for all zones
+const allZones: __esri.FeatureSet = await tsunamiHazardLayer?.queryFeatures();
+
+// Create graphics for evacuate zones
+const evacuateGraphicsLayer: GraphicsLayer | null = new GraphicsLayer({
+  title: "Evacuate Zones",
+  id: "evacuate-zones",
 });
 
-const safeGraphicsLayer = new GraphicsLayer({
+const safeGraphicsLayer: GraphicsLayer | null = new GraphicsLayer({
   title: "Safe Zones",
-  id: "safe-zones"
+  id: "safe-zones",
 });
 ```
 
-5. Query and display tsunami hazard zones.
+4. **Query and display tsunami hazard zones**
 
 ```typescript
-async function displayZones() {
-  try {
-    const allZones = await tsunamiHazardLayer.queryFeatures();
-    allZones.features.forEach(zone => {
-      const zoneGraphic = new Graphic({
-        geometry: zone.geometry,
-        symbol: new SimpleFillSymbol({
-          color: zone.attributes.Evacuate === "Yes, Tsunami Hazard Area" ? [255, 0, 0, 0.5] : [0, 255, 0, 0.3],
-          outline: {
-            color: zone.attributes.Evacuate === "Yes, Tsunami Hazard Area" ? [255, 0, 0] : [0, 255, 0],
-            width: 2
-          }
-        }),
-        attributes: {
-          name: zone.attributes.Label,
-          evacuate: zone.attributes.Evacuate,
-          county: zone.attributes.County,
-          gisLink: zone.attributes.GIS_Link,
-          kmzLink: zone.attributes.KMZ_Link,
-          mapLink: zone.attributes.Map_Link
+allZones.features.forEach((zone) => {
+  const zoneGraphic: Graphic | null = new Graphic({
+    geometry: zone.geometry,
+    symbol: new SimpleFillSymbol({
+      color:
+        zone.attributes.Evacuate === "Yes, Tsunami Hazard Area"
+          ? [255, 0, 0, 0.5]
+          : [0, 255, 0, 0.3], // Red for evacuate, green for safe
+      outline: {
+        color:
+          zone.attributes.Evacuate === "Yes, Tsunami Hazard Area"
+            ? [255, 0, 0]
+            : [0, 255, 0], // Red outline for evacuate, green for safe
+        width: 2,
+      },
+    }),
+    attributes: {
+      name: zone.attributes.Label,
+      evacuate: zone.attributes.Evacuate,
+      county: zone.attributes.County,
+      gisLink: zone.attributes.GIS_Link,
+      kmzLink: zone.attributes.KMZ_Link,
+      mapLink: zone.attributes.Map_Link,
+    },
+    popupTemplate: {
+      title: "Tsunami Zone",
+      content: [
+        {
+          type: "fields",
+          fieldInfos: [
+            {
+              fieldName: "evacuate",
+              label: "Evacuate Area",
+              format: {
+                type: "text",
+                digitSeparator: false,
+              },
+            },
+            {
+              fieldName: "county",
+              label: "County",
+            },
+          ],
         },
-        popupTemplate: {
-          title: "Tsunami Zone",
-          content: [
+        {
+          type: "text",
+          text: "Links:",
+        },
+        {
+          type: "fields",
+          fieldInfos: [
             {
-              type: "fields",
-              fieldInfos: [
-                {
-                  fieldName: "name",
-                  label: "Zone Name"
-                },
-                {
-                  fieldName: "evacuate",
-                  label: "Evacuate Area"
-                },
-                {
-                  fieldName: "county",
-                  label: "County"
-                }
-              ]
+              fieldName: "gisLink",
+              label: "GIS Link",
+              format: {
+                type: "text",
+                digitSeparator: false,
+              },
             },
             {
-              type: "text",
-              text: "Links:"
+              fieldName: "kmzLink",
+              label: "KMZ Link",
+              format: {
+                type: "text",
+                digitSeparator: false,
+              },
             },
             {
-              type: "fields",
-              fieldInfos: [
-                {
-                  fieldName: "gisLink",
-                  label: "GIS Link"
-                },
-                {
-                  fieldName: "kmzLink",
-                  label: "KMZ Link"
-                },
-                {
-                  fieldName: "mapLink",
-                  label: "Map Link"
-                }
-              ]
-            }
-          ]
-        }
-      });
+              fieldName: "mapLink",
+              label: "Map Link",
+              format: {
+                type: "text",
+                digitSeparator: false,
+              },
+            },
+          ],
+        },
+      ],
+    },
+  });
 
-      // Add to appropriate layer based on zone type
-      if (zone.attributes.Evacuate === "Yes, Tsunami Hazard Area") {
-        hazardGraphicsLayer.add(zoneGraphic);
-      } else {
-        safeGraphicsLayer.add(zoneGraphic);
-      }
-    });
-
-    // Add hazard zones layer to map by default
-    view?.map?.add(hazardGraphicsLayer);
-
-    // Handle zone selector changes
-    const zoneSelector = document.getElementById("zoneSelector");
-    if (zoneSelector) {
-      zoneSelector.value = "evacuate";
-      zoneSelector.addEventListener("calciteSelectChange", (event: any) => {
-        const selectedZone = event.target.value;
-        view?.map?.removeAll();
-        if (selectedZone === "evacuate") {
-          view?.map?.add(hazardGraphicsLayer);
-        } else if (selectedZone === "safe") {
-          view?.map?.add(safeGraphicsLayer);
-        }
-      });
-    }
-  } catch (error) {
-    console.error("Error displaying zones:", error);
+  // Add to appropriate layer based on zone type
+  if (zone.attributes.Evacuate === "Yes, Tsunami Hazard Area") {
+    evacuateGraphicsLayer.add(zoneGraphic);
+  } else {
+    safeGraphicsLayer.add(zoneGraphic);
   }
+});
+
+// Add only the evacuate layer initially
+view?.map?.add(evacuateGraphicsLayer);
+```
+
+5. **Add event listener for zone selector changes**
+
+```typescript
+// Handle zone selector changes
+// Set default selection to evacuate
+const zoneSelector: HTMLSelectElement | null = document.querySelector("#zoneSelector");
+if (zoneSelector) {
+  zoneSelector.value = "evacuate";
 }
+
+// Add event listener for zone selector changes
+zoneSelector?.addEventListener("calciteSelectChange", (event: Event) => {
+  const selectedZone = (event?.target as HTMLSelectElement)?.value;
+
+  // Remove all layers first
+  view?.map?.removeAll();
+
+  if (selectedZone === "evacuate") {
+    view?.map?.add(evacuateGraphicsLayer);
+  } else if (selectedZone === "safe") {
+    view?.map?.add(safeGraphicsLayer);
+  }
+});
 ```
 
 ## Run the application
